@@ -1,0 +1,33 @@
+FROM ubuntu:18.04
+
+RUN apt-get update && apt-get install -y \
+        software-properties-common automake autoconf libpng-dev \
+        curl zip unzip libtool swig zlib1g-dev pkg-config git wget xz-utils \
+        python3-numpy python3-pip python3-mock \
+        libpython3-dev libpython3-all-dev \
+        gcc g++
+
+# NOTE: use Oracle Java instead of OpenJDK
+RUN echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
+RUN add-apt-repository ppa:webupd8team/java && apt-get update \
+        && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y oracle-java8-installer
+
+# NOTE: limit bazel memory 
+ENV BAZEL_JAVAC_OPTS="-J-Xms512m -J-Xmx1024m"
+ENV TF_PYTHON_VERSION=3.6
+
+RUN pip3 install -U --user keras_applications==1.0.5 --no-deps \
+    && pip3 install -U --user keras_preprocessing==1.0.3 --no-deps \
+    && ldconfig
+
+RUN /bin/bash -c "update-alternatives --install /usr/bin/python python /usr/bin/python3 100"
+
+RUN mkdir -p /root/tensorflow-on-arm/build_tensorflow
+COPY configs /root/tensorflow-on-arm/build_tensorflow/configs
+COPY tools /root/tensorflow-on-arm/build_tensorflow/tools
+COPY patch /root/tensorflow-on-arm/build_tensorflow/patch
+COPY patch.sh /root/tensorflow-on-arm/build_tensorflow/
+COPY build_tensorflow.sh /root/tensorflow-on-arm/build_tensorflow/
+
+WORKDIR /root/tensorflow-on-arm/build_tensorflow/
+CMD ["/bin/bash"]
